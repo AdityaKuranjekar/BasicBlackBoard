@@ -32,8 +32,8 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import type { Stroke, AppSettings, ViewportState } from './types';
-import { DEFAULT_SETTINGS, DEFAULT_VIEWPORT, MIN_SCALE, MAX_SCALE } from './constants';
-import { useHistory } from './hooks/useHistory';
+import { DEFAULT_SETTINGS, MIN_SCALE, MAX_SCALE } from './constants';
+import { usePages } from './hooks/usePages';
 import { maybeRebaseOrigin, zoomViewport } from './engine/Viewport';
 import { BlackboardCanvas } from './components/BlackboardCanvas';
 import { Toolbar }           from './components/Toolbar';
@@ -42,17 +42,21 @@ import { ClearConfirmModal } from './components/ClearConfirmModal';
 export default function App() {
   // ── Drawing history (undo/redo) ────────────────────────────
   const {
+    pages,
+    activePageIndex,
+    addPage,
+    nextPage,
+    prevPage,
     strokes,
+    viewport,
     pushStroke,
     setStrokes,
+    setViewport,
     undo,
     redo,
     canUndo,
     canRedo,
-  } = useHistory();
-
-  // ── Camera state ───────────────────────────────────────────
-  const [viewport, setViewport] = useState<ViewportState>(DEFAULT_VIEWPORT);
+  } = usePages();
 
   // ── UI settings ────────────────────────────────────────────
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
@@ -208,6 +212,8 @@ export default function App() {
         onStrokeCommit={handleStrokeCommit}
         onErase={handleErase}
         onViewportChange={handleViewportChange}
+        onSwipeLeft={nextPage}
+        onSwipeRight={prevPage}
       />
 
       {/* Floating left toolbar (above canvas, below modal) */}
@@ -221,6 +227,12 @@ export default function App() {
         onClear={() => setShowClearModal(true)}
         onZoomIn={() => handleZoom('in')}
         onZoomOut={() => handleZoom('out')}
+        onNextPage={nextPage}
+        onPrevPage={prevPage}
+        onAddPage={addPage}
+        hasMultiplePages={pages.length > 1}
+        currentPageIndex={activePageIndex}
+        totalPages={pages.length}
       />
 
       {/* Clear confirmation modal */}

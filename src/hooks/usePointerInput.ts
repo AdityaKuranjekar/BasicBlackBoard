@@ -95,6 +95,10 @@ export interface UsePointerInputOptions {
   onEraserMove: (screenX: number, screenY: number) => void;
   /** Called when the pointer leaves the canvas */
   onEraserLeave: () => void;
+  /** Called when a two-finger swipe left is detected */
+  onSwipeLeft?: () => void;
+  /** Called when a two-finger swipe right is detected */
+  onSwipeRight?: () => void;
 }
 
 // ─────────────────────────────────────────────
@@ -119,6 +123,8 @@ export function usePointerInput({
   onViewportChange,
   onEraserMove,
   onEraserLeave,
+  onSwipeLeft,
+  onSwipeRight,
 }: UsePointerInputOptions): void {
   // ── Refs for values that event handlers need to read ─────
   // We use refs (not state) so event handlers always see the latest
@@ -147,6 +153,14 @@ export function usePointerInput({
    */
   const activeTouchesRef = useRef<Map<number, { x: number; y: number }>>(new Map());
 
+  /** Tracks two-finger swipe state */
+  const swipeDataRef = useRef({
+    startX: 0,
+    startY: 0,
+    active: false,
+    swiped: false,
+  });
+
   // ── Callback refs — stable references for event listeners ─
   // We store callbacks in refs so we never need to remove/re-add
   // event listeners when the parent component re-renders.
@@ -159,6 +173,8 @@ export function usePointerInput({
   const onViewportChangeRef = useRef(onViewportChange);
   const onEraserMoveRef     = useRef(onEraserMove);
   const onEraserLeaveRef    = useRef(onEraserLeave);
+  const onSwipeLeftRef      = useRef(onSwipeLeft);
+  const onSwipeRightRef     = useRef(onSwipeRight);
 
   useEffect(() => { onStrokeStartRef.current    = onStrokeStart;    }, [onStrokeStart]);
   useEffect(() => { onStrokePointRef.current    = onStrokePoint;    }, [onStrokePoint]);
@@ -169,6 +185,8 @@ export function usePointerInput({
   useEffect(() => { onViewportChangeRef.current = onViewportChange; }, [onViewportChange]);
   useEffect(() => { onEraserMoveRef.current     = onEraserMove;     }, [onEraserMove]);
   useEffect(() => { onEraserLeaveRef.current    = onEraserLeave;    }, [onEraserLeave]);
+  useEffect(() => { onSwipeLeftRef.current      = onSwipeLeft;      }, [onSwipeLeft]);
+  useEffect(() => { onSwipeRightRef.current     = onSwipeRight;     }, [onSwipeRight]);
 
   // ── Main effect — register event listeners ────────────────
   useEffect(() => {
@@ -255,6 +273,16 @@ export function usePointerInput({
           y: e.clientY,
         });
         el.setPointerCapture(e.pointerId);
+
+        if (activeTouchesRef.current.size === 2) {
+          const [t1, t2] = Array.from(activeTouchesRef.current.values());
+          swipeDataRef.current = {
+            startX: (t1.x + t2.x) / 2,
+            startY: (t1.y + t2.y) / 2,
+            active: true,
+            swiped: false,
+          };
+        }
       }
 
       // ── Mouse (desktop fallback) ────────────────────────────
@@ -372,6 +400,19 @@ export function usePointerInput({
             newVP = panViewport(newVP, currMidX - prevMidX, currMidY - prevMidY);
 
             onViewportChangeRef.current(newVP);
+
+            // Check for two-finger swipe
+            if (swipeDataRef.current.active && !swipeDataRef.current.swiped) {
+              const dx = currMidX - swipeDataRef.current.startX;
+              const dy = currMidY - swipeDataRef.current.startY;
+              
+              // If moving mostly horizontally by a significant amount (150px threshold)
+              if (Math.abs(dx) > 150 && Math.abs(dy) < 80) {
+                if (dx < 0 && onSwipeLeftRef.current) onSwipeLeftRef.current(); // Swiping left -> Next Page
+                if (dx > 0 && onSwipeRightRef.current) onSwipeRightRef.current(); // Swiping right -> Prev Page
+                swipeDataRef.current.swiped = true;
+              }
+            }
           }
         }
 
@@ -413,6 +454,11 @@ export function usePointerInput({
         }
       } else if (isTouch) {
         if (penLockedRef.current) return;
+        
+        if (activeTouchesRef.current.size === 2) {
+          swipeDataRef.current.active = false;
+        }
+        
         activeTouchesRef.current.delete(e.pointerId);
       }
     }

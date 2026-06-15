@@ -75,6 +75,15 @@ export interface ViewportState {
   scale: number;
 }
 
+/** Represents a single page (infinite canvas) */
+export interface PageData {
+  id: string;
+  past: Stroke[][];
+  present: Stroke[];
+  future: Stroke[][];
+  viewport: ViewportState;
+}
+
 // ─────────────────────────────────────────────
 // Application state
 // ─────────────────────────────────────────────

@@ -259,6 +259,23 @@ button {
   overflow: hidden;
 }
 
+/* ── Pagination ─────────────────────────────────────────── */
+
+.toolbar-pagination {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+}
+
+.pagination-text {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin: 4px 0;
+}
+
 /* ── Indicator dots ─────────────────────────────────────── */
 
 /* Small dot showing that a setting is non-default */

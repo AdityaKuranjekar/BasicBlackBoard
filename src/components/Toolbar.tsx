@@ -60,6 +60,12 @@ interface ToolbarProps {
   onClear: () => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
+  onNextPage: () => void;
+  onPrevPage: () => void;
+  onAddPage: () => void;
+  hasMultiplePages: boolean;
+  currentPageIndex: number;
+  totalPages: number;
 }
 
 // Which settings panel is currently open
@@ -152,6 +158,18 @@ const PlusIcon = () => (
 const MinusIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M5 12h14"/>
+  </svg>
+);
+
+const ChevronLeftIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="15 18 9 12 15 6"/>
+  </svg>
+);
+
+const ChevronRightIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="9 18 15 12 9 6"/>
   </svg>
 );
 
@@ -348,6 +366,11 @@ export function Toolbar({
   onClear,
   onZoomIn,
   onZoomOut,
+  onNextPage,
+  onPrevPage,
+  onAddPage,
+  currentPageIndex,
+  totalPages,
 }: ToolbarProps) {
   const [openPanel, setOpenPanel] = useState<OpenPanel>(null);
   const [collapsed, setCollapsed]  = useState(false);
@@ -522,6 +545,37 @@ export function Toolbar({
             {!collapsed && <span className="btn-label">Zoom Out</span>}
           </button>
         )}
+
+        {!collapsed && <div className="toolbar-divider" />}
+
+        {/* Page Navigation */}
+        {!collapsed && (
+          <div className="toolbar-pagination">
+            <button 
+              className={`toolbar-btn ${currentPageIndex === 0 ? 'disabled' : ''}`} 
+              onClick={onPrevPage} 
+              disabled={currentPageIndex === 0}
+              title="Previous Page"
+            >
+              <span className="btn-icon"><ChevronLeftIcon /></span>
+            </button>
+            <span className="pagination-text">{currentPageIndex + 1} / {totalPages}</span>
+            <button 
+              className={`toolbar-btn ${currentPageIndex === totalPages - 1 ? 'disabled' : ''}`} 
+              onClick={onNextPage} 
+              disabled={currentPageIndex === totalPages - 1}
+              title="Next Page"
+            >
+              <span className="btn-icon"><ChevronRightIcon /></span>
+            </button>
+          </div>
+        )}
+
+        {/* Add Page (always visible) */}
+        <button className="toolbar-btn" onClick={onAddPage} title="Add Page">
+          <span className="btn-icon"><PlusIcon /></span>
+          {!collapsed && <span className="btn-label">Add Page</span>}
+        </button>
 
         {!collapsed && <div className="toolbar-divider" />}
 

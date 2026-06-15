@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">infinite-blackboard</string>
+    <string name="title_activity_main">infinite-blackboard</string>
+    <string name="package_name">com.shiksha.blackboard</string>
+    <string name="custom_url_scheme">com.shiksha.blackboard</string>
+</resources>

@@ -61,6 +61,10 @@ interface BlackboardCanvasProps {
   onErase: (newStrokes: Stroke[], saveHistory: boolean) => void;
   /** Called when the viewport changes due to pan or pinch gesture */
   onViewportChange: (vp: ViewportState) => void;
+  /** Called when a two-finger swipe left is detected */
+  onSwipeLeft?: () => void;
+  /** Called when a two-finger swipe right is detected */
+  onSwipeRight?: () => void;
 }
 
 // ─────────────────────────────────────────────
@@ -74,6 +78,8 @@ export const BlackboardCanvas = React.memo(function BlackboardCanvas({
   onStrokeCommit,
   onErase,
   onViewportChange,
+  onSwipeLeft,
+  onSwipeRight,
 }: BlackboardCanvasProps) {
   // ── Canvas element refs ────────────────────────────────────
   const bgCanvasRef     = useRef<HTMLCanvasElement>(null);
@@ -282,6 +288,8 @@ export const BlackboardCanvas = React.memo(function BlackboardCanvas({
     onViewportChange,
     onEraserMove:     handleEraserMove,
     onEraserLeave:    handleEraserLeave,
+    onSwipeLeft,
+    onSwipeRight,
   });
 
   // ─────────────────────────────────────────────

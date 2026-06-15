@@ -19,7 +19,7 @@ import type { AppSettings, ViewportState } from '../types';
  * because old undo steps are never needed. 500 strokes is well
  * beyond any realistic "I need to undo 10 steps" scenario.
  */
-export const MAX_HISTORY_STEPS = 500;
+export const MAX_HISTORY_STEPS = 20;
 
 // ─────────────────────────────────────────────
 // Colour palette
