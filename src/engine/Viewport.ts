@@ -28,12 +28,12 @@
  * large. IEEE 754 double-precision floats start losing sub-pixel
  * accuracy above ~10^15, but visible jitter begins well before that
  * (around 10^6 for high-DPI screens). We counter this by periodically
- * rebasing the origin: shifting all stored stroke coordinates so that
+ * rebasing the origin: shifting all stored CanvasElement coordinates so that
  * the camera offset returns to near-zero. This is the same technique
  * used by applications like Miro and Figma.
  */
 
-import type { ViewportState, Point, Stroke } from '../types';
+import type { ViewportState, CanvasElement } from '../types';
 import { MIN_SCALE, MAX_SCALE, REBASE_THRESHOLD } from '../constants';
 
 // ─────────────────────────────────────────────
@@ -151,19 +151,19 @@ export function zoomViewport(
  *
  * Algorithm:
  *   1. Check if |offsetX| or |offsetY| exceeds REBASE_THRESHOLD
- *   2. If so, shift every stroke point by (−offsetX, −offsetY)
+ *   2. If so, shift every CanvasElement point by (−offsetX, −offsetY)
  *   3. Reset the camera offset to (0, 0)
  *
- * Effect on stroke data: all point.x − offsetX, all point.y − offsetY
+ * Effect on CanvasElement data: all point.x − offsetX, all point.y − offsetY
  * Effect on viewport:    offsetX → 0, offsetY → 0
  *
  * @returns The (possibly rebased) strokes and viewport, plus a flag
  *          indicating whether a rebase actually occurred.
  */
 export function maybeRebaseOrigin(
-  strokes: Stroke[],
+  strokes: CanvasElement[],
   viewport: ViewportState
-): { strokes: Stroke[]; viewport: ViewportState; rebased: boolean } {
+): { strokes: CanvasElement[]; viewport: ViewportState; rebased: boolean } {
   const { offsetX, offsetY } = viewport;
   const needsRebase =
     Math.abs(offsetX) >= REBASE_THRESHOLD ||
@@ -173,15 +173,10 @@ export function maybeRebaseOrigin(
     return { strokes, viewport, rebased: false };
   }
 
-  // Translate all stroke points so the camera reset is invisible to the user
-  const rebasedStrokes: Stroke[] = strokes.map(stroke => ({
-    ...stroke,
-    points: stroke.points.map((p: Point) => ({
-      ...p,
-      x: p.x - offsetX,
-      y: p.y - offsetY,
-    })),
-  }));
+  // Translate all CanvasElement coordinates so the camera reset is invisible to the user
+  const rebasedStrokes: CanvasElement[] = strokes.map(element => {
+    return { ...element, x: element.x - offsetX, y: element.y - offsetY } as CanvasElement;
+  });
 
   const rebasedViewport: ViewportState = {
     ...viewport,

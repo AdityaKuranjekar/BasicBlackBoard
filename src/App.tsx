@@ -15,7 +15,7 @@
  *   settings   — tool, colours, widths, background, grid (useState)
  *
  * All state lives here so that:
- *   1. The canvas receives the complete stroke list and can re-render
+ *   1. The canvas receives the complete CanvasElement list and can re-render
  *   2. The toolbar can reflect the current settings
  *   3. Undo/redo affect both the display and the history stack
  *
@@ -31,7 +31,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import type { Stroke, AppSettings, ViewportState } from './types';
+import type { CanvasElement, AppSettings, ViewportState } from './types';
 import { DEFAULT_SETTINGS, MIN_SCALE, MAX_SCALE } from './constants';
 import { usePages } from './hooks/usePages';
 import { maybeRebaseOrigin, zoomViewport } from './engine/Viewport';
@@ -76,19 +76,27 @@ export default function App() {
   // Canvas event handlers
   // ─────────────────────────────────────────────
 
-  /** Called when a stroke gesture completes (pen lifts) */
-  const handleStrokeCommit = useCallback((stroke: Stroke) => {
-    pushStroke(stroke);
+  /** Called when a CanvasElement gesture completes (pen lifts) */
+  const handleStrokeCommit = useCallback((CanvasElement: CanvasElement) => {
+    pushStroke(CanvasElement);
   }, [pushStroke]);
+
+  /** Called when a selected element is moved or resized */
+  const handleElementUpdate = useCallback((updatedElement: CanvasElement) => {
+    setStrokes(
+      strokes.map(s => s.id === updatedElement.id ? updatedElement : s),
+      true // Save to history for undo
+    );
+  }, [strokes, setStrokes]);
 
   /**
    * Called during and after an erase gesture.
    *
-   * @param newStrokes  - Updated stroke list after applying eraser
+   * @param newStrokes  - Updated CanvasElement list after applying eraser
    * @param saveHistory - True only on pointerup (commit one undo entry)
    */
   const handleErase = useCallback(
-    (newStrokes: Stroke[], saveHistory: boolean) => {
+    (newStrokes: CanvasElement[], saveHistory: boolean) => {
       setStrokes(newStrokes, saveHistory);
     },
     [setStrokes]
@@ -211,6 +219,7 @@ export default function App() {
         viewport={viewport}
         onStrokeCommit={handleStrokeCommit}
         onErase={handleErase}
+        onElementUpdate={handleElementUpdate}
         onViewportChange={handleViewportChange}
         onSwipeLeft={nextPage}
         onSwipeRight={prevPage}

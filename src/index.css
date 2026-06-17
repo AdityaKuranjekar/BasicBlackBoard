@@ -56,12 +56,12 @@ button {
 
 :root {
   /* Toolbar */
-  --toolbar-bg:         rgba(20, 20, 20, 0.45);
-  --toolbar-border:     rgba(255, 255, 255, 0.15);
-  --toolbar-blur:       blur(20px);
-  --toolbar-radius:     32px;
-  --toolbar-width:      64px;
-  --toolbar-width-exp:  112px;  /* expanded (with labels) */
+  --toolbar-bg:         rgba(14, 14, 20, 0.35);
+  --toolbar-border:     rgba(255, 255, 255, 0.06);
+  --toolbar-blur:       blur(36px);
+  --toolbar-radius:     28px;
+  --toolbar-width:      48px;
+  --toolbar-width-exp:  108px;  /* expanded (with labels) */
 
   /* Button states */
   --btn-hover:          rgba(255, 255, 255, 0.08);
@@ -84,8 +84,8 @@ button {
   --panel-radius:       12px;
 
   /* Shadows */
-  --toolbar-shadow:     0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255,255,255,0.05);
-  --panel-shadow:       0 12px 40px rgba(0, 0, 0, 0.5);
+  --toolbar-shadow:     0 12px 48px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255,255,255,0.03);
+  --panel-shadow:       0 16px 56px rgba(0, 0, 0, 0.4);
 
   /* Animation */
   --ease-out:           cubic-bezier(0.16, 1, 0.3, 1);
@@ -109,8 +109,11 @@ button {
   align-items: center;
   gap: 8px;
   /* Prevent the toolbar itself from capturing drawing events on the canvas */
-  touch-action: auto;
+  touch-action: none;
   pointer-events: auto;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 /* ── Main toolbar strip ──────────────────────────────────── */
@@ -119,9 +122,9 @@ button {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 1px;
   width: var(--toolbar-width-exp);
-  padding: 10px 6px;
+  padding: 8px 5px;
   background: var(--toolbar-bg);
   border: 1px solid var(--toolbar-border);
   border-radius: var(--toolbar-radius);
@@ -129,6 +132,16 @@ button {
   backdrop-filter: var(--toolbar-blur);
   -webkit-backdrop-filter: var(--toolbar-blur);
   transition: width var(--duration-med) var(--ease-out);
+  /* Never overflow the screen vertically — scroll internally if needed */
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* Hide scrollbar visually but keep functionality */
+  scrollbar-width: none;
+}
+
+.toolbar::-webkit-scrollbar {
+  display: none;
 }
 
 .toolbar-container.collapsed .toolbar {
@@ -141,26 +154,26 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  margin-bottom: 2px;
+  width: 28px;
+  height: 28px;
+  margin-bottom: 1px;
 }
 
 .brand-dot {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: linear-gradient(135deg, #60B8FF, #A78BFA);
-  box-shadow: 0 0 12px rgba(96, 184, 255, 0.5);
+  box-shadow: 0 0 10px rgba(96, 184, 255, 0.5);
 }
 
 /* ── Divider ────────────────────────────────────────────── */
 
 .toolbar-divider {
-  width: 80%;
+  width: 70%;
   height: 1px;
   background: var(--toolbar-border);
-  margin: 4px 0;
+  margin: 2px 0;
   flex-shrink: 0;
 }
 
@@ -175,11 +188,11 @@ button {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   width: 100%;
-  min-height: 44px;
-  padding: 8px 10px;
-  border-radius: 22px;
+  min-height: 36px;
+  padding: 5px 8px;
+  border-radius: 18px;
   color: var(--text-secondary);
   transition:
     background var(--duration-fast) ease,
@@ -230,8 +243,8 @@ button {
 /* ── Button content ─────────────────────────────────────── */
 
 .btn-icon {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -239,8 +252,8 @@ button {
 }
 
 .btn-icon svg {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 
 .btn-label {
@@ -305,18 +318,50 @@ button {
    ═════════════════════════════════════════════════════════ */
 
 .panel-container {
-  animation: panelSlideIn var(--duration-med) var(--ease-out) both;
+  position: absolute;
+  /* Will be positioned by dynamic classes */
+  z-index: 101;
 }
 
-@keyframes panelSlideIn {
+@keyframes panelSlideInRight {
   from { opacity: 0; transform: translateX(-12px); }
   to   { opacity: 1; transform: translateX(0); }
 }
 
+@keyframes panelSlideInLeft {
+  from { opacity: 0; transform: translateX(12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* X Positioning */
+.panel-pos-right {
+  left: calc(100% + 8px);
+  animation: panelSlideInRight var(--duration-med) var(--ease-out) both;
+}
+
+.panel-pos-left {
+  right: calc(100% + 8px);
+  animation: panelSlideInLeft var(--duration-med) var(--ease-out) both;
+}
+
+/* Y Positioning */
+.panel-pos-center {
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.panel-pos-top {
+  top: 0;
+}
+
+.panel-pos-bottom {
+  bottom: 0;
+}
+
 .settings-panel {
-  min-width: 220px;
-  max-width: 280px;
-  padding: 16px;
+  min-width: 200px;
+  max-width: 250px;
+  padding: 12px;
   background: var(--panel-bg);
   border: 1px solid var(--panel-border);
   border-radius: var(--panel-radius);
@@ -331,7 +376,7 @@ button {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-muted);
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 
 /* ── Colour swatches ────────────────────────────────────── */
@@ -339,8 +384,8 @@ button {
 .color-swatches {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: 6px;
+  margin-bottom: 12px;
 }
 
 .color-swatch {
@@ -429,6 +474,58 @@ button {
   background: white;
   cursor: pointer;
   border: none;
+}
+
+/* ── Shape type selector ────────────────────────────────── */
+
+.shape-types-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.shape-type-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 4px 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1.5px solid transparent;
+  border-radius: 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    background var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    color var(--duration-fast) ease,
+    transform var(--duration-fast) ease;
+}
+
+.shape-type-btn svg {
+  width: 22px;
+  height: 22px;
+}
+
+.shape-type-btn span {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.shape-type-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+  transform: scale(1.05);
+}
+
+.shape-type-btn.active {
+  background: rgba(99, 179, 237, 0.18);
+  border-color: rgba(99, 179, 237, 0.7);
+  color: #63b3ed;
 }
 
 /* ── Stroke preview ─────────────────────────────────────── */

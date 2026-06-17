@@ -76,8 +76,8 @@ export interface UsePointerInputOptions {
   onStrokeStart: (point: Point) => void;
   /** Called for each subsequent point in the stroke (pen/mouse move) */
   onStrokePoint: (point: Point) => void;
-  /** Called when the stroke ends (pen/mouse up or cancel) */
-  onStrokeEnd: () => void;
+  /** Called when the stroke ends (pen/mouse up or cancel). Receives the last world point if available. */
+  onStrokeEnd: (lastPoint?: Point) => void;
   /**
    * Called while the eraser is moving.
    * @param worldX      - Eraser centre X in world coordinates
@@ -161,6 +161,9 @@ export function usePointerInput({
     swiped: false,
   });
 
+  /** Double tap state */
+  const lastTouchDownRef = useRef<{time: number, x: number, y: number} | null>(null);
+
   // ── Callback refs — stable references for event listeners ─
   // We store callbacks in refs so we never need to remove/re-add
   // event listeners when the parent component re-renders.
@@ -187,6 +190,9 @@ export function usePointerInput({
   useEffect(() => { onEraserLeaveRef.current    = onEraserLeave;    }, [onEraserLeave]);
   useEffect(() => { onSwipeLeftRef.current      = onSwipeLeft;      }, [onSwipeLeft]);
   useEffect(() => { onSwipeRightRef.current     = onSwipeRight;     }, [onSwipeRight]);
+
+  // Track the most recent world-space point so onStrokeEnd can receive it
+  const lastWorldPointRef = useRef<Point | null>(null);
 
   // ── Main effect — register event listeners ────────────────
   useEffect(() => {
@@ -241,7 +247,8 @@ export function usePointerInput({
         // pen moves outside the canvas element boundary.
         el.setPointerCapture(e.pointerId);
 
-        if (toolRef.current === 'pen') {
+        const isDrawingTool = ['pen', 'rectangle', 'ellipse', 'arrow', 'line', 'select'].includes(toolRef.current);
+        if (isDrawingTool) {
           isDrawingRef.current = true;
           onStrokeStartRef.current(eventToWorldPoint(e));
         } else if (toolRef.current === 'eraser') {
@@ -268,6 +275,24 @@ export function usePointerInput({
          */
         if (penLockedRef.current) return;
 
+        // Double tap detection for page navigation
+        const now = Date.now();
+        const last = lastTouchDownRef.current;
+        if (last && (now - last.time) < 300) {
+          const dist = Math.hypot(e.clientX - last.x, e.clientY - last.y);
+          if (dist < 30) {
+            const width = window.innerWidth;
+            if (e.clientX < width * 0.25) {
+              if (onSwipeRightRef.current) onSwipeRightRef.current(); // Prev Page
+            } else if (e.clientX > width * 0.75) {
+              if (onSwipeLeftRef.current) onSwipeLeftRef.current(); // Next Page
+            }
+            lastTouchDownRef.current = null;
+            return; // Prevent further touch processing for this double tap
+          }
+        }
+        lastTouchDownRef.current = { time: now, x: e.clientX, y: e.clientY };
+
         activeTouchesRef.current.set(e.pointerId, {
           x: e.clientX,
           y: e.clientY,
@@ -275,6 +300,15 @@ export function usePointerInput({
         el.setPointerCapture(e.pointerId);
 
         if (activeTouchesRef.current.size === 2) {
+          if (isDrawingRef.current) {
+            isDrawingRef.current = false;
+            onStrokeEndRef.current(lastWorldPointRef.current ?? undefined);
+          }
+          if (isErasingRef.current) {
+            isErasingRef.current = false;
+            onEraseEndRef.current();
+          }
+
           const [t1, t2] = Array.from(activeTouchesRef.current.values());
           swipeDataRef.current = {
             startX: (t1.x + t2.x) / 2,
@@ -282,6 +316,13 @@ export function usePointerInput({
             active: true,
             swiped: false,
           };
+        } else if (activeTouchesRef.current.size === 1) {
+          // Only hand tool is allowed for touch now
+          // A single finger always behaves like the hand tool (panning)
+          activeTouchesRef.current.set(e.pointerId, {
+            x: e.clientX,
+            y: e.clientY,
+          });
         }
       }
 
@@ -289,7 +330,8 @@ export function usePointerInput({
       else if (isMouse) {
         el.setPointerCapture(e.pointerId);
 
-        if (toolRef.current === 'pen') {
+        const isDrawingTool = ['pen', 'rectangle', 'ellipse', 'arrow', 'line', 'select'].includes(toolRef.current);
+        if (isDrawingTool) {
           isDrawingRef.current = true;
           onStrokeStartRef.current(eventToWorldPoint(e));
         } else if (toolRef.current === 'eraser') {
@@ -324,7 +366,9 @@ export function usePointerInput({
         const sy   = e.clientY - rect.top;
 
         if (isDrawingRef.current) {
-          onStrokePointRef.current(eventToWorldPoint(e));
+          const wp = eventToWorldPoint(e);
+          lastWorldPointRef.current = wp;
+          onStrokePointRef.current(wp);
         } else if (isErasingRef.current) {
           const pt = eventToWorldPoint(e);
           const r  = eraserWidthRef.current / 2 / viewportRef.current.scale;
@@ -355,10 +399,13 @@ export function usePointerInput({
 
         if (touches.size === 1) {
           // ── Single finger → pan ──────────────────────────────
-          const dx = e.clientX - prevPos.x;
-          const dy = e.clientY - prevPos.y;
-          const newVP = panViewport(viewportRef.current, dx, dy);
-          onViewportChangeRef.current(newVP);
+          // Single finger touch only pans if the hand tool is selected
+          if (toolRef.current === 'hand') {
+            const dx = e.clientX - prevPos.x;
+            const dy = e.clientY - prevPos.y;
+            const newVP = panViewport(viewportRef.current, dx, dy);
+            onViewportChangeRef.current(newVP);
+          }
         } else if (touches.size === 2) {
           // ── Two fingers → pinch-zoom + pan ───────────────────
           // Find the OTHER touch's current (already-updated) position.
@@ -380,17 +427,9 @@ export function usePointerInput({
           // "Other" finger position hasn't changed this frame — it's
           // the value from its last pointermove event.
           const prevDist = Math.hypot(prevPos.x - otherPos.x, prevPos.y - otherPos.y);
-          const currDist = Math.hypot(currX - otherPos.x, currY - otherPos.y);
 
           if (prevDist > 1) { // Guard against near-zero to avoid division issues
-            const scaleFactor = currDist / prevDist;
-            const rect = el.getBoundingClientRect();
-
-            // Focal point = midpoint between the two fingers (screen space)
-            const focalX = (currX + otherPos.x) / 2 - rect.left;
-            const focalY = (currY + otherPos.y) / 2 - rect.top;
-
-            let newVP = zoomViewport(viewportRef.current, scaleFactor, focalX, focalY);
+            let newVP = viewportRef.current;
 
             // Also pan by the midpoint movement
             const prevMidX = (prevPos.x + otherPos.x) / 2;
@@ -400,19 +439,6 @@ export function usePointerInput({
             newVP = panViewport(newVP, currMidX - prevMidX, currMidY - prevMidY);
 
             onViewportChangeRef.current(newVP);
-
-            // Check for two-finger swipe
-            if (swipeDataRef.current.active && !swipeDataRef.current.swiped) {
-              const dx = currMidX - swipeDataRef.current.startX;
-              const dy = currMidY - swipeDataRef.current.startY;
-              
-              // If moving mostly horizontally by a significant amount (150px threshold)
-              if (Math.abs(dx) > 150 && Math.abs(dy) < 80) {
-                if (dx < 0 && onSwipeLeftRef.current) onSwipeLeftRef.current(); // Swiping left -> Next Page
-                if (dx > 0 && onSwipeRightRef.current) onSwipeRightRef.current(); // Swiping right -> Prev Page
-                swipeDataRef.current.swiped = true;
-              }
-            }
           }
         }
 
@@ -434,7 +460,7 @@ export function usePointerInput({
       if (isPen || isMouse) {
         if (isDrawingRef.current) {
           isDrawingRef.current = false;
-          onStrokeEndRef.current(); // Commit the stroke
+          onStrokeEndRef.current(lastWorldPointRef.current ?? undefined); // Commit the stroke
         }
         if (isErasingRef.current) {
           isErasingRef.current = false;
@@ -454,6 +480,16 @@ export function usePointerInput({
         }
       } else if (isTouch) {
         if (penLockedRef.current) return;
+        
+        if (activeTouchesRef.current.size === 1) {
+          if (isDrawingRef.current) {
+            isDrawingRef.current = false;
+            onStrokeEndRef.current(lastWorldPointRef.current ?? undefined);
+          } else if (isErasingRef.current) {
+            isErasingRef.current = false;
+            onEraseEndRef.current();
+          }
+        }
         
         if (activeTouchesRef.current.size === 2) {
           swipeDataRef.current.active = false;

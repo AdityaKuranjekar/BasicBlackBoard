@@ -26,26 +26,53 @@ export interface Point {
   pressure: number;
 }
 
-/** A complete drawn stroke (a single lift-free gesture) */
-export interface Stroke {
-  /** Unique identifier — used for undo/redo tracking */
+export type ElementType = 'freedraw' | 'rectangle' | 'ellipse' | 'arrow' | 'line';
+
+/** Base properties common to all canvas elements */
+export interface CanvasElementBase {
+  /** Unique identifier */
   id: string;
-  /** Ordered sequence of world-space points captured during the gesture */
-  points: Point[];
-  /** CSS color string, e.g. '#F5F5F0' */
-  color: string;
-  /** Base stroke width in world pixels (modulated by pressure at render time) */
+  /** The type of element */
+  type: ElementType;
+  /** Bounding box X coordinate (top-left) in world space */
+  x: number;
+  /** Bounding box Y coordinate (top-left) in world space */
+  y: number;
+  /** Bounding box width in world space */
   width: number;
-  /** The tool that created this stroke */
-  tool: 'pen';
+  /** Bounding box height in world space */
+  height: number;
+  /** Stroke/outline CSS color string */
+  strokeColor: string;
+  /** Base stroke width in world pixels */
+  strokeWidth: number;
+  /** Whether the element has been marked as deleted (for sync/undo) */
+  isDeleted?: boolean;
 }
+
+/** A freehand drawn stroke */
+export interface FreedrawElement extends CanvasElementBase {
+  type: 'freedraw';
+  /** Ordered sequence of points relative to the bounding box (x,y) */
+  points: Point[];
+}
+
+/** A geometric shape element */
+export interface ShapeElement extends CanvasElementBase {
+  type: 'rectangle' | 'ellipse' | 'arrow' | 'line';
+  /** Optional fill color (transparent if not provided) */
+  fillColor?: string;
+}
+
+/** Any renderable element on the canvas */
+export type CanvasElement = FreedrawElement | ShapeElement;
 
 // ─────────────────────────────────────────────
 // Tool & Mode enums
 // ─────────────────────────────────────────────
 
 /** Active drawing tool */
-export type Tool = 'pen' | 'eraser' | 'hand';
+export type Tool = 'pen' | 'eraser' | 'hand' | 'select' | 'rectangle' | 'ellipse' | 'arrow' | 'line';
 
 /** Background grid overlay type */
 export type GridMode = 'none' | 'dots' | 'squares';
@@ -78,9 +105,9 @@ export interface ViewportState {
 /** Represents a single page (infinite canvas) */
 export interface PageData {
   id: string;
-  past: Stroke[][];
-  present: Stroke[];
-  future: Stroke[][];
+  past: CanvasElement[][];
+  present: CanvasElement[];
+  future: CanvasElement[][];
   viewport: ViewportState;
 }
 

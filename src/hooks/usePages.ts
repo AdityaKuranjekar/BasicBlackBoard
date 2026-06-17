@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import type { Stroke, ViewportState, PageData } from '../types';
+import type { CanvasElement, ViewportState, PageData } from '../types';
 import { MAX_HISTORY_STEPS, DEFAULT_VIEWPORT } from '../constants';
 import { nanoid } from '../utils/nanoid';
 
@@ -14,12 +14,12 @@ export interface UsePagesReturn {
   prevPage: () => void;
 
   // Active Page State
-  strokes: Stroke[];
+  strokes: CanvasElement[];
   viewport: ViewportState;
   
   // Active Page Actions
-  pushStroke: (stroke: Stroke) => void;
-  setStrokes: (newStrokes: Stroke[], saveToHistory?: boolean) => void;
+  pushStroke: (CanvasElement: CanvasElement) => void;
+  setStrokes: (newStrokes: CanvasElement[], saveToHistory?: boolean) => void;
   setViewport: (viewport: ViewportState | ((vp: ViewportState) => ViewportState)) => void;
   undo: () => void;
   redo: () => void;
@@ -45,18 +45,21 @@ export function usePages(): UsePagesReturn {
   // ── Page Management ──────────────────────────────────────────
 
   const addPage = useCallback(() => {
-    setPages(prev => [
-      ...prev,
-      {
-        id: nanoid(),
-        past: [],
-        present: [],
-        future: [],
-        viewport: DEFAULT_VIEWPORT,
-      }
-    ]);
-    setActivePageIndex(pages.length); // The new page will be at the end
-  }, [pages.length]);
+    setPages(prev => {
+      const newPages = [
+        ...prev,
+        {
+          id: nanoid(),
+          past: [],
+          present: [],
+          future: [],
+          viewport: DEFAULT_VIEWPORT,
+        }
+      ];
+      setActivePageIndex(newPages.length - 1);
+      return newPages;
+    });
+  }, []);
 
   const nextPage = useCallback(() => {
     setActivePageIndex(prev => Math.min(prev + 1, pages.length - 1));
@@ -72,17 +75,17 @@ export function usePages(): UsePagesReturn {
     setPages(prev => prev.map((p, i) => i === activePageIndex ? updater(p) : p));
   }, [activePageIndex]);
 
-  const pushStroke = useCallback((stroke: Stroke) => {
+  const pushStroke = useCallback((CanvasElement: CanvasElement) => {
     updateActivePage(page => ({
       ...page,
       past: [...page.past.slice(-(MAX_HISTORY_STEPS - 1)), page.present],
-      present: [...page.present, stroke],
+      present: [...page.present, CanvasElement],
       future: [],
     }));
   }, [updateActivePage]);
 
   const setStrokes = useCallback(
-    (newStrokes: Stroke[], saveToHistory = true) => {
+    (newStrokes: CanvasElement[], saveToHistory = true) => {
       updateActivePage(page => ({
         ...page,
         past: saveToHistory

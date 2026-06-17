@@ -69,11 +69,26 @@ interface ToolbarProps {
 }
 
 // Which settings panel is currently open
-type OpenPanel = 'pen' | 'eraser' | 'grid' | 'background' | null;
+type OpenPanel = 'pen' | 'eraser' | 'grid' | 'background' | 'shapes' | null;
 
 // ─────────────────────────────────────────────
 // SVG Icon helpers
 // ─────────────────────────────────────────────
+
+const SelectIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/>
+    <path d="M13 13l6 6"/>
+  </svg>
+);
+
+const ShapesIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="7" height="7"/>
+    <circle cx="17.5" cy="17.5" r="4.5"/>
+    <path d="M14 3l7 7"/>
+  </svg>
+);
 
 const PenIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -352,6 +367,99 @@ function BackgroundSettingsPanel({ settings, onChange }: BackgroundPanelProps) {
   );
 }
 
+interface ShapesPanelProps {
+  settings: AppSettings;
+  onChange: (patch: Partial<AppSettings>) => void;
+}
+
+function ShapesSettingsPanel({ settings, onChange }: ShapesPanelProps) {
+  const shapes: Array<{ type: Tool, icon: React.ReactNode, label: string }> = [
+    {
+      type: 'rectangle',
+      label: 'Rect',
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="5" width="18" height="14" rx="2" ry="2"/>
+        </svg>
+      ),
+    },
+    {
+      type: 'ellipse',
+      label: 'Ellipse',
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <ellipse cx="12" cy="12" rx="10" ry="7"/>
+        </svg>
+      ),
+    },
+    {
+      type: 'arrow',
+      label: 'Arrow',
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="5" y1="12" x2="19" y2="12"/>
+          <polyline points="12 5 19 12 12 19"/>
+        </svg>
+      ),
+    },
+    {
+      type: 'line',
+      label: 'Line',
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+          <line x1="4" y1="20" x2="20" y2="4"/>
+        </svg>
+      ),
+    },
+  ];
+
+  return (
+    <div className="settings-panel">
+      <p className="settings-label">Shape</p>
+      <div className="shape-types-grid">
+        {shapes.map(s => (
+          <button
+            key={s.type}
+            className={`shape-type-btn ${settings.tool === s.type ? 'active' : ''}`}
+            onClick={() => onChange({ tool: s.type })}
+            title={s.label}
+          >
+            {s.icon}
+            <span>{s.label}</span>
+          </button>
+        ))}
+      </div>
+      <p className="settings-label">Color</p>
+      <div className="color-swatches">
+        {CHALK_COLORS.map(color => (
+          <button
+            key={color}
+            className={`color-swatch ${settings.penColor === color ? 'active' : ''}`}
+            style={{ backgroundColor: color }}
+            onClick={() => onChange({ penColor: color })}
+            title={color}
+          />
+        ))}
+      </div>
+      <p className="settings-label">Stroke Width</p>
+      <div className="slider-row">
+        <span className="slider-min">Thin</span>
+        <input
+          type="range"
+          min={1}
+          max={20}
+          step={0.5}
+          value={settings.penWidth}
+          onChange={e => onChange({ penWidth: Number(e.target.value) })}
+          className="slider"
+        />
+        <span className="slider-max">Thick</span>
+      </div>
+    </div>
+  );
+}
+
+
 // ─────────────────────────────────────────────
 // Main Toolbar Component
 // ─────────────────────────────────────────────
@@ -374,7 +482,43 @@ export function Toolbar({
 }: ToolbarProps) {
   const [openPanel, setOpenPanel] = useState<OpenPanel>(null);
   const [collapsed, setCollapsed]  = useState(false);
+  const [panelTop, setPanelTop] = useState(0);
   const toolbarRef = useRef<HTMLDivElement>(null);
+
+
+
+  // Dynamically calculate panel position based on the button clicked
+  useEffect(() => {
+    if (openPanel && toolbarRef.current) {
+      let btnId = '';
+      if (openPanel === 'pen') btnId = 'tool-pen';
+      if (openPanel === 'eraser') btnId = 'tool-eraser';
+      if (openPanel === 'shapes') btnId = 'tool-shapes';
+      if (openPanel === 'grid') btnId = 'btn-grid';
+      if (openPanel === 'background') btnId = 'btn-background';
+      
+      let btn = document.getElementById(btnId);
+      
+      // Fallback for collapsed mode: if the tool button was swapped out, use the currently visible one in that slot
+      if (!btn && collapsed && (openPanel === 'pen' || openPanel === 'eraser')) {
+        btn = document.getElementById('tool-pen') || document.getElementById('tool-eraser');
+      }
+      
+      if (btn && toolbarRef.current) {
+        const tbRect = toolbarRef.current.getBoundingClientRect();
+        const btnRect = btn.getBoundingClientRect();
+        
+        // Align the top of the panel with the top of the button
+        let top = btnRect.top - tbRect.top;
+        
+        // Prevent panel from going off the bottom of the screen (assume ~320px max panel height)
+        const maxTop = window.innerHeight - tbRect.top - 320;
+        if (top > maxTop) top = maxTop;
+        
+        setPanelTop(Math.max(0, top));
+      }
+    }
+  }, [openPanel]);
 
   // Close open panel when clicking outside the toolbar container
   useEffect(() => {
@@ -407,12 +551,18 @@ export function Toolbar({
   const isPen    = settings.tool === 'pen';
   const isEraser = settings.tool === 'eraser';
   const isHand   = settings.tool === 'hand';
+  const isSelect = settings.tool === 'select';
+  const isShape  = ['rectangle', 'ellipse', 'arrow', 'line'].includes(settings.tool);
 
-  // For collapsed state logic:
-  const collapsedSecondaryTool = isEraser ? 'pen' : 'eraser';
+  // For collapsed state: always show pen, eraser, shapes
 
   return (
-    <div ref={toolbarRef} className={`toolbar-container ${collapsed ? 'collapsed' : ''}`}>
+    <div 
+      ref={toolbarRef} 
+      className={`toolbar-container ${collapsed ? 'collapsed' : ''}`}
+
+      onContextMenu={(e) => e.preventDefault()}
+    >
       {/* ── Main toolbar strip ─── */}
       <div className="toolbar">
 
@@ -425,33 +575,53 @@ export function Toolbar({
 
         {!collapsed && <div className="toolbar-divider" />}
 
+        {/* Select tool */}
+        <button
+          id="tool-select"
+          className={`toolbar-btn ${isSelect ? 'active' : ''}`}
+          onClick={() => selectTool('select', null)}
+          title="Select (V)"
+          aria-pressed={isSelect}
+        >
+          <span className="btn-icon"><SelectIcon /></span>
+          {!collapsed && <span className="btn-label">Select</span>}
+        </button>
+
         {/* Pen tool */}
-        {(!collapsed || collapsedSecondaryTool === 'pen') && (
-          <button
-            id="tool-pen"
-            className={`toolbar-btn ${isPen ? 'active' : ''}`}
-            onClick={() => selectTool('pen', 'pen')}
-            title="Pen (P)"
-            aria-pressed={isPen}
-          >
-            <span className="btn-icon"><PenIcon /></span>
-            {!collapsed && <span className="btn-label">Pen</span>}
-          </button>
-        )}
+        <button
+          id="tool-pen"
+          className={`toolbar-btn ${isPen ? 'active' : ''}`}
+          onClick={() => selectTool('pen', 'pen')}
+          title="Pen (P)"
+          aria-pressed={isPen}
+        >
+          <span className="btn-icon"><PenIcon /></span>
+          {!collapsed && <span className="btn-label">Pen</span>}
+        </button>
+
+        {/* Shapes tool */}
+        <button
+          id="tool-shapes"
+          className={`toolbar-btn ${isShape || openPanel === 'shapes' ? 'active' : ''}`}
+          onClick={() => togglePanel('shapes')}
+          title="Shapes"
+          aria-pressed={isShape}
+        >
+          <span className="btn-icon"><ShapesIcon /></span>
+          {!collapsed && <span className="btn-label">Shapes</span>}
+        </button>
 
         {/* Eraser tool */}
-        {(!collapsed || collapsedSecondaryTool === 'eraser') && (
-          <button
-            id="tool-eraser"
-            className={`toolbar-btn ${isEraser ? 'active' : ''}`}
-            onClick={() => selectTool('eraser', 'eraser')}
-            title="Eraser (E)"
-            aria-pressed={isEraser}
-          >
-            <span className="btn-icon"><EraserIcon /></span>
-            {!collapsed && <span className="btn-label">Eraser</span>}
-          </button>
-        )}
+        <button
+          id="tool-eraser"
+          className={`toolbar-btn ${isEraser ? 'active' : ''}`}
+          onClick={() => selectTool('eraser', 'eraser')}
+          title="Eraser (E)"
+          aria-pressed={isEraser}
+        >
+          <span className="btn-icon"><EraserIcon /></span>
+          {!collapsed && <span className="btn-label">Eraser</span>}
+        </button>
 
         {/* Hand tool */}
         {!collapsed && (
@@ -470,32 +640,28 @@ export function Toolbar({
         {!collapsed && <div className="toolbar-divider" />}
 
         {/* Undo */}
-        {!collapsed && (
-          <button
-            id="btn-undo"
-            className={`toolbar-btn ${!canUndo ? 'disabled' : ''}`}
-            onClick={onUndo}
-            disabled={!canUndo}
-            title="Undo (Ctrl+Z)"
-          >
-            <span className="btn-icon"><UndoIcon /></span>
-            {!collapsed && <span className="btn-label">Undo</span>}
-          </button>
-        )}
+        <button
+          id="btn-undo"
+          className={`toolbar-btn ${!canUndo ? 'disabled' : ''}`}
+          onClick={onUndo}
+          disabled={!canUndo}
+          title="Undo (Ctrl+Z)"
+        >
+          <span className="btn-icon"><UndoIcon /></span>
+          {!collapsed && <span className="btn-label">Undo</span>}
+        </button>
 
         {/* Redo */}
-        {!collapsed && (
-          <button
-            id="btn-redo"
-            className={`toolbar-btn ${!canRedo ? 'disabled' : ''}`}
-            onClick={onRedo}
-            disabled={!canRedo}
-            title="Redo (Ctrl+Y)"
-          >
-            <span className="btn-icon"><RedoIcon /></span>
-            {!collapsed && <span className="btn-label">Redo</span>}
-          </button>
-        )}
+        <button
+          id="btn-redo"
+          className={`toolbar-btn ${!canRedo ? 'disabled' : ''}`}
+          onClick={onRedo}
+          disabled={!canRedo}
+          title="Redo (Ctrl+Y)"
+        >
+          <span className="btn-icon"><RedoIcon /></span>
+          {!collapsed && <span className="btn-label">Redo</span>}
+        </button>
 
         {!collapsed && <div className="toolbar-divider" />}
 
@@ -549,8 +715,8 @@ export function Toolbar({
         {!collapsed && <div className="toolbar-divider" />}
 
         {/* Page Navigation */}
-        {!collapsed && (
-          <div className="toolbar-pagination">
+        <div className="toolbar-pagination" style={{ padding: collapsed ? '4px 0' : '0' }}>
+          {!collapsed && (
             <button 
               className={`toolbar-btn ${currentPageIndex === 0 ? 'disabled' : ''}`} 
               onClick={onPrevPage} 
@@ -559,7 +725,9 @@ export function Toolbar({
             >
               <span className="btn-icon"><ChevronLeftIcon /></span>
             </button>
-            <span className="pagination-text">{currentPageIndex + 1} / {totalPages}</span>
+          )}
+          <span className="pagination-text" style={collapsed ? { fontSize: '10px' } : {}}>{currentPageIndex + 1} / {totalPages}</span>
+          {!collapsed && (
             <button 
               className={`toolbar-btn ${currentPageIndex === totalPages - 1 ? 'disabled' : ''}`} 
               onClick={onNextPage} 
@@ -568,8 +736,8 @@ export function Toolbar({
             >
               <span className="btn-icon"><ChevronRightIcon /></span>
             </button>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Add Page (always visible) */}
         <button className="toolbar-btn" onClick={onAddPage} title="Add Page">
@@ -605,14 +773,17 @@ export function Toolbar({
         </button>
       </div>
 
-      {/* ── Settings panels (slide in to the right) ─── */}
+      {/* ── Settings panels (dynamic position) ─── */}
       {openPanel && (
-        <div className="panel-container">
+        <div className="panel-container panel-pos-right" style={{ top: panelTop }}>
           {openPanel === 'pen' && (
             <PenSettingsPanel settings={settings} onChange={onSettingsChange} />
           )}
           {openPanel === 'eraser' && (
             <EraserSettingsPanel settings={settings} onChange={onSettingsChange} />
+          )}
+          {openPanel === 'shapes' && (
+            <ShapesSettingsPanel settings={settings} onChange={onSettingsChange} />
           )}
           {openPanel === 'grid' && (
             <GridSettingsPanel settings={settings} onChange={onSettingsChange} />

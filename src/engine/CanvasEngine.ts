@@ -10,15 +10,15 @@
  *
  *   ┌─────────────────────────────────────────────────┐
  *   │  Layer 3 — UI Canvas          z-index: 3        │  ← Eraser cursor, pointer events
- *   │  Layer 2 — Active Canvas      z-index: 2        │  ← Live stroke being drawn
- *   │  Layer 1 — Stroke Canvas      z-index: 1        │  ← All committed strokes
+ *   │  Layer 2 — Active Canvas      z-index: 2        │  ← Live CanvasElement being drawn
+ *   │  Layer 1 — CanvasElement Canvas      z-index: 1        │  ← All committed strokes
  *   │  Layer 0 — Background Canvas  z-index: 0        │  ← Background fill + grid
  *   └─────────────────────────────────────────────────┘
  *
  * Benefits of this separation:
  *   • Background only re-renders when colour/grid/viewport changes
- *   • Committed strokes only re-render when the stroke list changes
- *   • The live active stroke can be redrawn every pointer event (sub-ms)
+ *   • Committed strokes only re-render when the CanvasElement list changes
+ *   • The live active CanvasElement can be redrawn every pointer event (sub-ms)
  *     without disturbing the other layers
  *   • The eraser cursor can be updated independently at 60fps
  *
@@ -38,7 +38,7 @@
  * Viewport Transform
  * ══════════════════════════════════════════════════════════
  *
- * For the stroke layers we call ctx.setTransform() to map from world
+ * For the CanvasElement layers we call ctx.setTransform() to map from world
  * coordinates to screen coordinates in a single step:
  *
  *   ctx.setTransform(
@@ -55,8 +55,8 @@
  * viewport transform) for efficiency and pixel-perfect rendering.
  */
 
-import type { Stroke, Point, ViewportState, GridMode } from '../types';
-import { renderStroke, renderActiveStroke } from './StrokeRenderer';
+import type { CanvasElement, ViewportState, GridMode } from '../types';
+import { renderElement, renderActiveElement, renderSelectionOverlay } from './ElementRenderer';
 import { renderGrid } from './GridRenderer';
 
 export class CanvasEngine {
@@ -163,71 +163,82 @@ export class CanvasEngine {
   // ─────────────────────────────────────────────
 
   /**
-   * Render all committed strokes onto the stroke canvas.
+   * Render all committed strokes onto the CanvasElement canvas.
    *
    * Called when:
-   *   • A new stroke is committed (pen lifted)
-   *   • Undo / redo changes the stroke list
+   *   • A new CanvasElement is committed (pen lifted)
+   *   • Undo / redo changes the CanvasElement list
    *   • Viewport pans or zooms (strokes must reposition)
    *   • After resize
    *
    * Full re-render is O(n_strokes × avg_points_per_stroke). For up to
    * 5,000 strokes this completes in < 5ms on modern hardware.
    *
-   * @param strokes  - Complete world-space stroke list to render
+   * @param elements - Complete world-space CanvasElement list to render
    * @param viewport - Current camera state
+   * @param selectedElementId - ID of the currently selected element, if any
+   * @param draggingElementId - ID of the element being dragged/resized (rendered at 50% opacity)
    */
-  renderStrokes(strokes: Stroke[], viewport: ViewportState): void {
+  renderStrokes(elements: CanvasElement[], viewport: ViewportState, selectedElementId?: string | null, draggingElementId?: string | null): void {
     const ctx = this.strokeCtx;
     ctx.clearRect(0, 0, this.physWidth, this.physHeight);
 
-    if (strokes.length === 0) return;
+    if (elements.length === 0) return;
 
     ctx.save();
     // Apply viewport → screen transform (includes DPR scaling)
     this.applyViewportTransform(ctx, viewport);
 
-    for (const stroke of strokes) {
-      renderStroke(ctx, stroke);
+    for (const element of elements) {
+      if (!element.isDeleted) {
+        if (draggingElementId && element.id === draggingElementId) {
+          ctx.globalAlpha = 0.5;
+        }
+        renderElement(ctx, element);
+        if (draggingElementId && element.id === draggingElementId) {
+          ctx.globalAlpha = 1.0;
+        }
+      }
+    }
+    
+    if (selectedElementId) {
+      const selected = elements.find(e => e.id === selectedElementId && !e.isDeleted);
+      if (selected) {
+        renderSelectionOverlay(ctx, selected);
+      }
     }
 
     ctx.restore();
   }
 
   // ─────────────────────────────────────────────
-  // Layer 2: Active (Live) Stroke
+  // Layer 2: Active (Live) CanvasElement
   // ─────────────────────────────────────────────
 
   /**
-   * Render the stroke currently being drawn by the user.
+   * Render the CanvasElement currently being drawn by the user.
    *
    * Called on every pointer move event during a drawing gesture.
    * This layer is cleared and redrawn from scratch each time to
    * avoid cumulative rendering artifacts.
    *
-   * @param points   - Points sampled so far in the current gesture
-   * @param color    - Stroke colour
-   * @param width    - Base stroke width in world pixels
+   * @param element  - The active CanvasElement object
    * @param viewport - Current camera state
    */
   renderActiveStroke(
-    points: Point[],
-    color: string,
-    width: number,
+    element: CanvasElement,
     viewport: ViewportState
   ): void {
     const ctx = this.activeCtx;
     ctx.clearRect(0, 0, this.physWidth, this.physHeight);
 
-    if (points.length === 0) return;
-
     ctx.save();
     this.applyViewportTransform(ctx, viewport);
-    renderActiveStroke(ctx, points, color, width);
+    renderActiveElement(ctx, element);
     ctx.restore();
   }
 
-  /** Clear the active stroke canvas (called when a stroke is committed or cancelled) */
+  /** Clear the active CanvasElement canvas (called when a CanvasElement is committed or cancelled) */
   clearActiveStroke(): void {
     this.activeCtx.clearRect(0, 0, this.physWidth, this.physHeight);
   }

@@ -1,15 +1,15 @@
 /**
- * useHistory — Stroke-based undo/redo with a bounded history stack.
+ * useHistory — CanvasElement-based undo/redo with a bounded history stack.
  *
  * ══════════════════════════════════════════════════════════
  * Design Decisions
  * ══════════════════════════════════════════════════════════
  *
- * Why stroke-based (not pixel-based)?
+ * Why CanvasElement-based (not pixel-based)?
  *   Pixel-based undo would require storing entire canvas bitmaps.
  *   On an iPad Retina display (2732×2048 @2×): one snapshot ≈ 44 MB.
- *   That's impractical. Storing stroke objects is cheap because
- *   JavaScript arrays hold references — copying Stroke[] is O(n)
+ *   That's impractical. Storing CanvasElement objects is cheap because
+ *   JavaScript arrays hold references — copying CanvasElement[] is O(n)
  *   reference copies, not deep-copies of the point data.
  *
  * Why bounded at MAX_HISTORY_STEPS?
@@ -22,20 +22,20 @@
  * State Model (Elm-style)
  * ══════════════════════════════════════════════════════════
  *
- *   past    — array of Stroke[] snapshots (oldest first)
- *   present — current Stroke[] (what's on the board right now)
- *   future  — array of Stroke[] snapshots that were undone (most recent first)
+ *   past    — array of CanvasElement[] snapshots (oldest first)
+ *   present — current CanvasElement[] (what's on the board right now)
+ *   future  — array of CanvasElement[] snapshots that were undone (most recent first)
  *
  * Undo: pop from past, push present to future, restore popped snapshot
  * Redo: pop from future, push present to past, restore popped snapshot
- * New stroke: push present to past, add stroke to present, clear future
+ * New CanvasElement: push present to past, add CanvasElement to present, clear future
  *
  * The future is cleared on any new action, which is the standard undo
  * semantics used by all major applications.
  */
 
 import { useState, useCallback } from 'react';
-import type { Stroke } from '../types';
+import type { CanvasElement } from '../types';
 import { MAX_HISTORY_STEPS } from '../constants';
 
 // ─────────────────────────────────────────────
@@ -44,24 +44,24 @@ import { MAX_HISTORY_STEPS } from '../constants';
 
 interface HistoryState {
   /** Snapshots of previous states — oldest at index 0 */
-  past: Stroke[][];
-  /** The current stroke list displayed on the board */
-  present: Stroke[];
+  past: CanvasElement[][];
+  /** The current CanvasElement list displayed on the board */
+  present: CanvasElement[];
   /** Snapshots of states that were undone — most-recent-undone at index 0 */
-  future: Stroke[][];
+  future: CanvasElement[][];
 }
 
 export interface UseHistoryReturn {
-  /** Current stroke list */
-  strokes: Stroke[];
-  /** Add a single new stroke (from a pen-up event) */
-  pushStroke: (stroke: Stroke) => void;
+  /** Current CanvasElement list */
+  strokes: CanvasElement[];
+  /** Add a single new CanvasElement (from a pen-up event) */
+  pushStroke: (CanvasElement: CanvasElement) => void;
   /**
-   * Replace the entire stroke list (used for erase and clear operations).
+   * Replace the entire CanvasElement list (used for erase and clear operations).
    * @param saveToHistory - Set to false only for intermediate erase preview
    *                        where you'll call it again on pointerup with true.
    */
-  setStrokes: (newStrokes: Stroke[], saveToHistory?: boolean) => void;
+  setStrokes: (newStrokes: CanvasElement[], saveToHistory?: boolean) => void;
   /** Restore the previous state */
   undo: () => void;
   /** Re-apply an undone state */
@@ -79,7 +79,7 @@ export interface UseHistoryReturn {
 /**
  * useHistory
  *
- * Provides stroke-level undo/redo with a bounded memory footprint.
+ * Provides CanvasElement-level undo/redo with a bounded memory footprint.
  * All state updates produce new objects — the history stack is
  * immutable and safe to use in React state.
  */
@@ -90,19 +90,19 @@ export function useHistory(): UseHistoryReturn {
     future:  [],
   });
 
-  // ── Add a single new stroke ───────────────────────────────
-  const pushStroke = useCallback((stroke: Stroke) => {
+  // ── Add a single new CanvasElement ───────────────────────────────
+  const pushStroke = useCallback((CanvasElement: CanvasElement) => {
     setHistory(prev => ({
       // Keep at most MAX_HISTORY_STEPS past snapshots to bound memory
       past:    [...prev.past.slice(-(MAX_HISTORY_STEPS - 1)), prev.present],
-      present: [...prev.present, stroke],
+      present: [...prev.present, CanvasElement],
       future:  [], // Any new action invalidates the redo stack
     }));
   }, []);
 
-  // ── Replace the entire stroke list ────────────────────────
+  // ── Replace the entire CanvasElement list ────────────────────────
   const setStrokes = useCallback(
-    (newStrokes: Stroke[], saveToHistory = true) => {
+    (newStrokes: CanvasElement[], saveToHistory = true) => {
       setHistory(prev => ({
         past: saveToHistory
           ? [...prev.past.slice(-(MAX_HISTORY_STEPS - 1)), prev.present]
