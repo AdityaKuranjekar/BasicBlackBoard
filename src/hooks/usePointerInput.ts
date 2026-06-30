@@ -399,13 +399,11 @@ export function usePointerInput({
 
         if (touches.size === 1) {
           // ── Single finger → pan ──────────────────────────────
-          // Single finger touch only pans if the hand tool is selected
-          if (toolRef.current === 'hand') {
-            const dx = e.clientX - prevPos.x;
-            const dy = e.clientY - prevPos.y;
-            const newVP = panViewport(viewportRef.current, dx, dy);
-            onViewportChangeRef.current(newVP);
-          }
+          // Single finger touch always pans
+          const dx = e.clientX - prevPos.x;
+          const dy = e.clientY - prevPos.y;
+          const newVP = panViewport(viewportRef.current, dx, dy);
+          onViewportChangeRef.current(newVP);
         } else if (touches.size === 2) {
           // ── Two fingers → pinch-zoom + pan ───────────────────
           // Find the OTHER touch's current (already-updated) position.

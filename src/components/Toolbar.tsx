@@ -576,16 +576,18 @@ export function Toolbar({
         {!collapsed && <div className="toolbar-divider" />}
 
         {/* Select tool */}
-        <button
-          id="tool-select"
-          className={`toolbar-btn ${isSelect ? 'active' : ''}`}
-          onClick={() => selectTool('select', null)}
-          title="Select (V)"
-          aria-pressed={isSelect}
-        >
-          <span className="btn-icon"><SelectIcon /></span>
-          {!collapsed && <span className="btn-label">Select</span>}
-        </button>
+        {!collapsed && (
+          <button
+            id="tool-select"
+            className={`toolbar-btn ${isSelect ? 'active' : ''}`}
+            onClick={() => selectTool('select', null)}
+            title="Select (V)"
+            aria-pressed={isSelect}
+          >
+            <span className="btn-icon"><SelectIcon /></span>
+            <span className="btn-label">Select</span>
+          </button>
+        )}
 
         {/* Pen tool */}
         <button
@@ -600,16 +602,18 @@ export function Toolbar({
         </button>
 
         {/* Shapes tool */}
-        <button
-          id="tool-shapes"
-          className={`toolbar-btn ${isShape || openPanel === 'shapes' ? 'active' : ''}`}
-          onClick={() => togglePanel('shapes')}
-          title="Shapes"
-          aria-pressed={isShape}
-        >
-          <span className="btn-icon"><ShapesIcon /></span>
-          {!collapsed && <span className="btn-label">Shapes</span>}
-        </button>
+        {!collapsed && (
+          <button
+            id="tool-shapes"
+            className={`toolbar-btn ${isShape || openPanel === 'shapes' ? 'active' : ''}`}
+            onClick={() => togglePanel('shapes')}
+            title="Shapes"
+            aria-pressed={isShape}
+          >
+            <span className="btn-icon"><ShapesIcon /></span>
+            <span className="btn-label">Shapes</span>
+          </button>
+        )}
 
         {/* Eraser tool */}
         <button
@@ -633,35 +637,39 @@ export function Toolbar({
             aria-pressed={isHand}
           >
             <span className="btn-icon"><HandIcon /></span>
-            {!collapsed && <span className="btn-label">Hand</span>}
+            <span className="btn-label">Hand</span>
           </button>
         )}
 
         {!collapsed && <div className="toolbar-divider" />}
 
         {/* Undo */}
-        <button
-          id="btn-undo"
-          className={`toolbar-btn ${!canUndo ? 'disabled' : ''}`}
-          onClick={onUndo}
-          disabled={!canUndo}
-          title="Undo (Ctrl+Z)"
-        >
-          <span className="btn-icon"><UndoIcon /></span>
-          {!collapsed && <span className="btn-label">Undo</span>}
-        </button>
+        {!collapsed && (
+          <button
+            id="btn-undo"
+            className={`toolbar-btn ${!canUndo ? 'disabled' : ''}`}
+            onClick={onUndo}
+            disabled={!canUndo}
+            title="Undo (Ctrl+Z)"
+          >
+            <span className="btn-icon"><UndoIcon /></span>
+            <span className="btn-label">Undo</span>
+          </button>
+        )}
 
         {/* Redo */}
-        <button
-          id="btn-redo"
-          className={`toolbar-btn ${!canRedo ? 'disabled' : ''}`}
-          onClick={onRedo}
-          disabled={!canRedo}
-          title="Redo (Ctrl+Y)"
-        >
-          <span className="btn-icon"><RedoIcon /></span>
-          {!collapsed && <span className="btn-label">Redo</span>}
-        </button>
+        {!collapsed && (
+          <button
+            id="btn-redo"
+            className={`toolbar-btn ${!canRedo ? 'disabled' : ''}`}
+            onClick={onRedo}
+            disabled={!canRedo}
+            title="Redo (Ctrl+Y)"
+          >
+            <span className="btn-icon"><RedoIcon /></span>
+            <span className="btn-label">Redo</span>
+          </button>
+        )}
 
         {!collapsed && <div className="toolbar-divider" />}
 
@@ -674,7 +682,7 @@ export function Toolbar({
             title="Grid"
           >
             <span className="btn-icon"><GridIcon /></span>
-            {!collapsed && <span className="btn-label">Grid</span>}
+            <span className="btn-label">Grid</span>
             {settings.gridMode !== 'none' && <span className="indicator-dot" />}
           </button>
         )}
@@ -688,7 +696,7 @@ export function Toolbar({
             title="Background"
           >
             <span className="btn-icon"><BackgroundIcon /></span>
-            {!collapsed && <span className="btn-label">Background</span>}
+            <span className="btn-label">Background</span>
             <span
               className="color-indicator"
               style={{ backgroundColor: settings.backgroundColor }}
@@ -702,13 +710,13 @@ export function Toolbar({
         {!collapsed && (
           <button className="toolbar-btn" onClick={onZoomIn} title="Zoom In">
             <span className="btn-icon"><PlusIcon /></span>
-            {!collapsed && <span className="btn-label">Zoom In</span>}
+            <span className="btn-label">Zoom In</span>
           </button>
         )}
         {!collapsed && (
           <button className="toolbar-btn" onClick={onZoomOut} title="Zoom Out">
             <span className="btn-icon"><MinusIcon /></span>
-            {!collapsed && <span className="btn-label">Zoom Out</span>}
+            <span className="btn-label">Zoom Out</span>
           </button>
         )}
 
@@ -716,27 +724,25 @@ export function Toolbar({
 
         {/* Page Navigation */}
         <div className="toolbar-pagination" style={{ padding: collapsed ? '4px 0' : '0' }}>
-          {!collapsed && (
-            <button 
-              className={`toolbar-btn ${currentPageIndex === 0 ? 'disabled' : ''}`} 
-              onClick={onPrevPage} 
-              disabled={currentPageIndex === 0}
-              title="Previous Page"
-            >
-              <span className="btn-icon"><ChevronLeftIcon /></span>
-            </button>
-          )}
-          <span className="pagination-text" style={collapsed ? { fontSize: '10px' } : {}}>{currentPageIndex + 1} / {totalPages}</span>
-          {!collapsed && (
-            <button 
-              className={`toolbar-btn ${currentPageIndex === totalPages - 1 ? 'disabled' : ''}`} 
-              onClick={onNextPage} 
-              disabled={currentPageIndex === totalPages - 1}
-              title="Next Page"
-            >
-              <span className="btn-icon"><ChevronRightIcon /></span>
-            </button>
-          )}
+          <button 
+            className={`toolbar-btn ${currentPageIndex === 0 ? 'disabled' : ''}`} 
+            onClick={onPrevPage} 
+            disabled={currentPageIndex === 0}
+            title="Previous Page"
+          >
+            <span className="btn-icon"><ChevronLeftIcon /></span>
+          </button>
+          <span className="pagination-text" style={collapsed ? { fontSize: '9px', margin: '2px 0', opacity: 0.8 } : {}}>
+            {currentPageIndex + 1} / {totalPages}
+          </span>
+          <button 
+            className={`toolbar-btn ${currentPageIndex === totalPages - 1 ? 'disabled' : ''}`} 
+            onClick={onNextPage} 
+            disabled={currentPageIndex === totalPages - 1}
+            title="Next Page"
+          >
+            <span className="btn-icon"><ChevronRightIcon /></span>
+          </button>
         </div>
 
         {/* Add Page (always visible) */}
@@ -756,7 +762,7 @@ export function Toolbar({
             title="Clear Board"
           >
             <span className="btn-icon"><TrashIcon /></span>
-            {!collapsed && <span className="btn-label">Clear</span>}
+            <span className="btn-label">Clear</span>
           </button>
         )}
 
